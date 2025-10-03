@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
-    android:padding="12dp"
+    android:padding="16dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -9,29 +9,22 @@
         android:id="@+id/btnPickFile"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Выбрать Excel/CSV" />
+        android:text="Выбрать файл" />
 
     <Button
         android:id="@+id/btnStart"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Запустить проверку"
-        android:layout_marginTop="8dp"/>
+        android:text="Начать проверку" />
 
-    <ScrollView
+    <TextView
+        android:id="@+id/tvOutput"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="12dp">
-
-        <TextView
-            android:id="@+id/tvOutput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="14sp"
-            android:padding="8dp"
-            android:scrollbars="vertical"
-            android:background="#F7F7F7" />
-    </ScrollView>
+        android:background="#111"
+        android:textColor="#0f0"
+        android:padding="8dp"
+        android:textSize="12sp"
+        android:scrollbars="vertical" />
 </LinearLayout>
