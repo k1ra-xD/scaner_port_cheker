@@ -11,6 +11,14 @@
         android:layout_height="wrap_content"
         android:text="Выбрать файл" />
 
+    <EditText
+        android:id="@+id/etStartRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="С какой строки начать (по умолчанию 1)"
+        android:inputType="number"
+        android:text="1" />
+
     <Button
         android:id="@+id/btnStart"
         android:layout_width="match_parent"
