@@ -50,11 +50,14 @@ public class ScanWorker extends Worker {
                 return Result.failure();
             }
 
+            // получаем с какой строки начинать
+            int startRow = getInputData().getInt("startRow", 1);
+
             File logFile = new File(getApplicationContext().getExternalFilesDir(null), "scan_log.txt");
 
             // 🔥 очищаем лог и пишем заголовок
             try (BufferedWriter clear = new BufferedWriter(new FileWriter(logFile, false))) {
-                clear.write("=== Начало проверки (" + ips.size() + " адресов) ===\n");
+                clear.write("=== Начало проверки (" + ips.size() + " адресов, с " + startRow + " строки) ===\n");
             }
 
             int total = ips.size();
@@ -63,7 +66,19 @@ public class ScanWorker extends Worker {
             // собираем все результаты
             Map<String, Map<String, String>> allResults = new HashMap<>();
 
-            for (String ip : ips) {
+            // добавляем метаданные для ExcelWriter (чтобы он тоже учитывал startRow)
+            Map<String,String> meta = new HashMap<>();
+            meta.put("startRow", String.valueOf(startRow));
+            allResults.put("__meta__", meta);
+
+            for (int i = 0; i < ips.size(); i++) {
+                String ip = ips.get(i);
+
+                // пропускаем до startRow
+                if ((i + 1) < startRow) {
+                    continue;
+                }
+
                 done++;
 
                 // foreground уведомление

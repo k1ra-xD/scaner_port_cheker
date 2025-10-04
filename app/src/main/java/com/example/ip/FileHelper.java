@@ -22,7 +22,8 @@ public class FileHelper {
 
     private static final String TAG = "FileHelper";
 
-    public static List<String> loadIps(Context ctx, Uri uri) {
+    // 🔥 перегрузка: можно передать startRow
+    public static List<String> loadIps(Context ctx, Uri uri, int startRow) {
         Set<String> ips = new HashSet<>(); // чтобы не было дубликатов
         try {
             String name = uri.getLastPathSegment().toLowerCase();
@@ -35,6 +36,8 @@ public class FileHelper {
                     for (int s = 0; s < wb.getNumberOfSheets(); s++) {
                         Sheet sheet = wb.getSheetAt(s);
                         for (Row row : sheet) {
+                            if (row.getRowNum() + 1 < startRow) continue; // ⚡ пропуск строк
+
                             for (Cell cell : row) {
                                 String text = cell.toString().trim();
                                 if (text.matches("\\d+\\.\\d+\\.\\d+\\.\\d+")) {
@@ -49,7 +52,11 @@ public class FileHelper {
                 try (BufferedReader br = new BufferedReader(
                         new InputStreamReader(ctx.getContentResolver().openInputStream(uri)))) {
                     String line;
+                    int lineNum = 0;
                     while ((line = br.readLine()) != null) {
+                        lineNum++;
+                        if (lineNum < startRow) continue; // ⚡ пропуск строк
+
                         // Разделяем по запятой, точке с запятой или пробелу
                         String[] parts = line.split("[,;\\s]+");
                         for (String part : parts) {
@@ -66,5 +73,10 @@ public class FileHelper {
         }
 
         return new ArrayList<>(ips);
+    }
+
+    // старый метод для совместимости
+    public static List<String> loadIps(Context ctx, Uri uri) {
+        return loadIps(ctx, uri, 1);
     }
 }

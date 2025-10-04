@@ -17,20 +17,34 @@
         android:layout_height="wrap_content"
         android:text="Начать проверку" />
 
+    <!-- Поле для выбора строки -->
+    <EditText
+        android:id="@+id/etStartRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="С какой строки начать проверку"
+        android:inputType="number"
+        android:layout_marginTop="8dp"
+        android:padding="8dp"
+        android:background="@android:drawable/edit_text"
+        android:textColor="#000000" />
+
+
     <!-- Оборачиваем в ScrollView -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:background="#111"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:layout_marginTop="8dp">
 
         <TextView
             android:id="@+id/tvOutput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#0f0"
-            android:padding="8dp"
+            android:padding="12dp"
             android:textSize="12sp"
             android:scrollbars="vertical"
             android:focusable="true"

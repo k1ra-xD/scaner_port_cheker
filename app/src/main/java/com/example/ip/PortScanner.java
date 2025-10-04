@@ -12,21 +12,20 @@ public class PortScanner {
      * Сканирует указанный IP и возвращает Map с ключами:
      * PING, HTTP, HTTPS, SSH, Modbus
      *
-     * Значения — "ОТКРЫТ (XX ms)" или "ЗАКРЫТ" / для PING — "XX ms" или "❌".
+     * Значения — только "✅" или "❌".
      */
     public static Map<String, String> scanIpSync(String ip) {
         Map<String, String> res = new HashMap<>();
 
         try {
             // PING
-            String pingResult = checkPing(ip, 1500);
-            res.put("PING", pingResult);
+            res.put("PING", checkPing(ip, 1500));
 
             // Порты
-            res.put("HTTP", checkPortWithTime(ip, 80, 1500));
-            res.put("HTTPS", checkPortWithTime(ip, 443, 1500));
-            res.put("SSH", checkPortWithTime(ip, 22, 1500));
-            res.put("Modbus", checkPortWithTime(ip, 502, 1500));
+            res.put("HTTP", checkPort(ip, 80, 1500));
+            res.put("HTTPS", checkPort(ip, 443, 1500));
+            res.put("SSH", checkPort(ip, 22, 1500));
+            res.put("Modbus", checkPort(ip, 502, 1500));
 
         } catch (Exception e) {
             // Если что-то пошло не так — возвращаем ❌ для всех
@@ -43,24 +42,19 @@ public class PortScanner {
     private static String checkPing(String ip, int timeoutMs) {
         try {
             InetAddress addr = InetAddress.getByName(ip);
-            long start = System.nanoTime();
             boolean ok = addr.isReachable(timeoutMs);
-            long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-            if (ok) return elapsedMs + " ms";
-            else return "❌";
+            return ok ? "✅" : "❌";
         } catch (Exception e) {
             return "❌";
         }
     }
 
-    private static String checkPortWithTime(String ip, int port, int timeoutMs) {
-        long start = System.nanoTime();
+    private static String checkPort(String ip, int port, int timeoutMs) {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(ip, port), timeoutMs);
-            long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-            return "ОТКРЫТ (" + elapsedMs + " ms)";
+            return "✅";
         } catch (Exception e) {
-            return "ЗАКРЫТ";
+            return "❌";
         }
     }
 }

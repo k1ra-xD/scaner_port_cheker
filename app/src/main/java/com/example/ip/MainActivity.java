@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.method.ScrollingMovementMethod;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
@@ -25,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView tvOutput;
     private Button btnPickFile, btnStart;
+    private EditText etStartRow; // 🔥 поле для ввода строки
     private Uri pickedFileUri;
     private ActivityResultLauncher<String[]> filePickerLauncher;
 
@@ -41,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         tvOutput = findViewById(R.id.tvOutput);
         btnPickFile = findViewById(R.id.btnPickFile);
         btnStart = findViewById(R.id.btnStart);
+        etStartRow = findViewById(R.id.etStartRow); // 🔥 инициализация
 
         // разрешаем прокрутку текста руками
         tvOutput.setMovementMethod(new ScrollingMovementMethod());
@@ -69,9 +72,21 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
+            // берём номер стартовой строки
+            int startRow = 1;
+            String startRowStr = etStartRow.getText().toString().trim();
+            if (!startRowStr.isEmpty()) {
+                try {
+                    startRow = Integer.parseInt(startRowStr);
+                } catch (NumberFormatException e) {
+                    startRow = 1;
+                }
+            }
+
             // запуск воркера
             Data inputData = new Data.Builder()
                     .putString(ScanWorker.KEY_FILE_URI, pickedFileUri.toString())
+                    .putInt("startRow", startRow) // 🔥 передаём в воркер
                     .build();
 
             OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(ScanWorker.class)

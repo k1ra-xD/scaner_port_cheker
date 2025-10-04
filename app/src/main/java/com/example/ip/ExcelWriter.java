@@ -65,9 +65,18 @@ public class ExcelWriter {
                 return false;
             }
 
+            // ==== получаем startRow (если есть) ====
+            int startRow = 1;
+            if (results.containsKey("__meta__")) {
+                try {
+                    startRow = Integer.parseInt(results.get("__meta__").get("startRow"));
+                } catch (Exception ignore) {}
+            }
+
             // ==== обновляем строки ====
             for (Row row : sheet) {
-                if (row.getRowNum() == 0) continue;
+                if (row.getRowNum() == 0) continue; // пропускаем заголовок
+                if (row.getRowNum() < startRow) continue; // 🔥 пропускаем до startRow
 
                 Cell ipCell = row.getCell(ipCol);
                 if (ipCell == null) continue;
@@ -142,7 +151,17 @@ public class ExcelWriter {
             Integer ipCol = colIndex.get("ip");
             if (ipCol == null) return false;
 
+            // ==== получаем startRow ====
+            int startRow = 1;
+            if (results.containsKey("__meta__")) {
+                try {
+                    startRow = Integer.parseInt(results.get("__meta__").get("startRow"));
+                } catch (Exception ignore) {}
+            }
+
             for (int i = 1; i < rows.size(); i++) {
+                if (i < startRow) continue; // 🔥 пропускаем до startRow
+
                 String[] row = rows.get(i);
                 if (row.length <= ipCol) continue;
 

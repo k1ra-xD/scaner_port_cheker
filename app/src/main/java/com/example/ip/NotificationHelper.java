@@ -57,7 +57,7 @@ public class NotificationHelper {
 
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle("Сканирование завершено")
-                .setContentText("✅ Все IP были проверены")
+                .setContentText("✅ Все IP были проверены (см. лог)")
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT) // 📌 явное уведомление
                 .setAutoCancel(true)
