@@ -21,6 +21,7 @@ public class ScanWorker extends Worker {
 
     public static final String KEY_FILE_URI = "fileUri";
     private static final String TAG = "ScanWorker";
+    public static final String KEY_START_ROW = "startRow";
 
     public ScanWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
@@ -43,7 +44,8 @@ public class ScanWorker extends Worker {
 
         try {
             Uri uri = Uri.parse(getInputData().getString(KEY_FILE_URI));
-            List<String> ips = FileHelper.loadIps(getApplicationContext(), uri);
+            int startRow = getInputData().getInt(KEY_START_ROW, 1);
+            List<String> ips = FileHelper.loadIps(getApplicationContext(), uri, startRow);
 
             if (ips == null || ips.isEmpty()) {
                 Log.w(TAG, "Список IP пуст!");
@@ -54,7 +56,7 @@ public class ScanWorker extends Worker {
 
             // 🔥 очищаем лог и пишем заголовок
             try (BufferedWriter clear = new BufferedWriter(new FileWriter(logFile, false))) {
-                clear.write("=== Начало проверки (" + ips.size() + " адресов) ===\n");
+                clear.write("=== Начало проверки (" + ips.size() + " адресов, старт с строки " + startRow + ") ===\n");
             }
 
             int total = ips.size();
