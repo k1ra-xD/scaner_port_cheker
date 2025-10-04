@@ -11,6 +11,9 @@ import androidx.work.WorkManager;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.method.ScrollingMovementMethod;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -25,6 +28,11 @@ public class MainActivity extends AppCompatActivity {
     private Uri pickedFileUri;
     private ActivityResultLauncher<String[]> filePickerLauncher;
 
+    // 🔥 handler для автообновления логов
+    private Handler logHandler = new Handler(Looper.getMainLooper());
+    private Runnable logUpdater;
+    private boolean isUpdating = false; // чтобы не запускалось повторно
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,7 +42,9 @@ public class MainActivity extends AppCompatActivity {
         btnPickFile = findViewById(R.id.btnPickFile);
         btnStart = findViewById(R.id.btnStart);
 
-        // File Picker
+        // разрешаем прокрутку текста руками
+        tvOutput.setMovementMethod(new ScrollingMovementMethod());
+
         filePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.OpenDocument(),
                 uri -> {
@@ -53,13 +63,13 @@ public class MainActivity extends AppCompatActivity {
             });
         });
 
-        // Запуск проверки
         btnStart.setOnClickListener(v -> {
             if (pickedFileUri == null) {
                 tvOutput.setText("Сначала выберите файл!");
                 return;
             }
 
+            // запуск воркера
             Data inputData = new Data.Builder()
                     .putString(ScanWorker.KEY_FILE_URI, pickedFileUri.toString())
                     .build();
@@ -75,28 +85,60 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onChanged(WorkInfo workInfo) {
                             if (workInfo == null) return;
-                            if (workInfo.getProgress().getBoolean("logUpdated", false)) {
-                                tvOutput.setText(readLogTail());
-                            }
                             if (workInfo.getState().isFinished()) {
                                 tvOutput.append("\n✅ Проверка завершена");
+                                stopLogUpdates(); // останавливаем таймер после завершения
                             }
                         }
                     });
+
+            // 🔥 запускаем автообновление логов раз в 1 сек
+            startLogUpdates();
         });
 
-        // 🔥 При старте сразу подгружаем лог (последние 50 строк)
+        // при старте показываем последние записи
         tvOutput.setText(readLogTail());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 🔥 Каждый раз при возврате в активити тоже обновляем лог
-        tvOutput.setText(readLogTail());
+        startLogUpdates(); // 🔥 возобновляем обновление логов
     }
 
-    // Чтение последних строк из файла лога
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLogUpdates(); // 🔥 чтобы не утекал Handler
+    }
+
+    private void startLogUpdates() {
+        if (isUpdating) return; // уже работает
+        isUpdating = true;
+
+        if (logUpdater == null) {
+            logUpdater = () -> {
+                tvOutput.setText(readLogTail());
+                // автопрокрутка вниз
+                tvOutput.post(() -> {
+                    int scrollAmount = tvOutput.getLayout().getLineTop(tvOutput.getLineCount()) - tvOutput.getHeight();
+                    if (scrollAmount > 0) tvOutput.scrollTo(0, scrollAmount);
+                    else tvOutput.scrollTo(0, 0);
+                });
+                logHandler.postDelayed(logUpdater, 1000); // обновление каждую секунду
+            };
+        }
+        logHandler.post(logUpdater);
+    }
+
+    private void stopLogUpdates() {
+        if (logUpdater != null) {
+            logHandler.removeCallbacks(logUpdater);
+        }
+        isUpdating = false;
+    }
+
+    // Чтение последних строк из файла
     private String readLogTail() {
         File logFile = new File(getExternalFilesDir(null), "scan_log.txt");
         if (!logFile.exists()) return "Лог пока пуст";
