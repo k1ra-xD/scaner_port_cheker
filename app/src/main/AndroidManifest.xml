@@ -3,13 +3,18 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.ip">
 
-    <!-- Разрешения -->
+    <!-- ====== Разрешения ====== -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- Разрешение для foreground service с типом dataSync -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- 🔥 Добавлено для совместимости с Android 14 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- Можно оставить SPECIAL_USE, если WorkManager требует -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:allowBackup="true"
@@ -19,9 +24,11 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.IP">
+        android:theme="@style/Theme.IP"
+        android:usesCleartextTraffic="true"
+        tools:targetApi="34">
 
-        <!-- Главная активити -->
+        <!-- Главная активность -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -31,10 +38,10 @@
             </intent-filter>
         </activity>
 
-        <!-- ForegroundService, который использует WorkManager -->
+        <!-- ForegroundService, используемый WorkManager -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
+            android:foregroundServiceType="dataSync|connectedDevice"
             android:exported="false" />
 
     </application>

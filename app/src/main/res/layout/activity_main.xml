@@ -17,6 +17,16 @@
         android:layout_height="wrap_content"
         android:text="Начать проверку" />
 
+    <Button
+        android:id="@+id/btnStop"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Остановить проверку"
+        android:layout_marginTop="6dp"
+        android:backgroundTint="#E53935"
+        android:textColor="#FFFFFF" />
+
+
     <!-- Поле для выбора строки -->
     <EditText
         android:id="@+id/etStartRow"
