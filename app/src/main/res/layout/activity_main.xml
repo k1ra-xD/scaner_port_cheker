@@ -1,64 +1,189 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="16dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#ECEFF1"
+    android:orientation="vertical"
+    android:padding="10dp">
 
-    <Button
-        android:id="@+id/btnPickFile"
+    <!-- 🔹 Верхняя панель -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Выбрать файл" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="2dp">
 
-    <Button
-        android:id="@+id/btnStart"
+        <TextView
+            android:id="@+id/tvHeader"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="IP Scanner"
+            android:textColor="#37474F"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+
+        <View
+            android:id="@+id/wifiIndicator"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:background="@android:color/darker_gray"
+            android:layout_marginEnd="6dp" />
+
+        <ImageButton
+            android:id="@+id/btnSaveWifi"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_save"
+            app:tint="#546E7A"
+            android:contentDescription="Сохранить Wi-Fi" />
+    </LinearLayout>
+
+    <!-- 🔹 Кнопки -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Начать проверку" />
+        android:orientation="horizontal"
+        android:weightSum="3"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp">
 
-    <Button
-        android:id="@+id/btnStop"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Остановить проверку"
-        android:layout_marginTop="6dp"
-        android:backgroundTint="#E53935"
-        android:textColor="#FFFFFF" />
+        <Button
+            android:id="@+id/btnPickFile"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="Файл"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:backgroundTint="#90A4AE"
+            android:layout_marginEnd="3dp" />
 
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="Старт"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:backgroundTint="#26A69A"
+            android:layout_marginEnd="3dp" />
 
-    <!-- Поле для выбора строки -->
+        <Button
+            android:id="@+id/btnStop"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:text="Стоп"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:backgroundTint="#EF5350" />
+    </LinearLayout>
+
+    <!-- 🔹 Ввод строки -->
     <EditText
         android:id="@+id/etStartRow"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="С какой строки начать проверку"
+        android:layout_height="40dp"
+        android:hint="Начать с строки..."
         android:inputType="number"
-        android:layout_marginTop="8dp"
-        android:padding="8dp"
+        android:textColor="#212121"
+        android:textColorHint="#9E9E9E"
+        android:textSize="13sp"
         android:background="@android:drawable/edit_text"
-        android:textColor="#000000" />
+        android:paddingHorizontal="10dp"
+        android:layout_marginBottom="6dp" />
 
+    <!-- 🔹 Переключатели -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="#FFFFFF"
+        android:paddingVertical="3dp"
+        android:layout_marginBottom="6dp"
+        android:elevation="1dp">
 
-    <!-- Оборачиваем в ScrollView -->
+        <Switch
+            android:id="@+id/switchPing"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Ping"
+            android:textColor="#263238"
+            android:textSize="13sp"
+            android:checked="true" />
+
+        <Switch
+            android:id="@+id/switchHttp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="HTTP"
+            android:textColor="#263238"
+            android:textSize="13sp"
+            android:checked="true" />
+
+        <Switch
+            android:id="@+id/switchSsh"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="SSH"
+            android:textColor="#263238"
+            android:textSize="13sp"
+            android:checked="true" />
+
+        <Switch
+            android:id="@+id/switchModbus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Modbus"
+            android:textColor="#263238"
+            android:textSize="13sp"
+            android:checked="false" />
+    </LinearLayout>
+
+    <!-- 🔹 Заголовок логов -->
+    <TextView
+        android:text="Логи"
+        android:textColor="#546E7A"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="2dp" />
+
+    <!-- 🔹 Область логов -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="#111"
+        android:background="#FFFFFF"
         android:fillViewport="true"
-        android:layout_marginTop="8dp">
+        android:padding="6dp"
+        android:elevation="1dp">
 
         <TextView
             android:id="@+id/tvOutput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#0f0"
-            android:padding="12dp"
-            android:textSize="12sp"
+            android:text="Результаты появятся здесь..."
+            android:textColor="#263238"
+            android:textSize="14sp"
+            android:fontFamily="monospace"
             android:scrollbars="vertical"
-            android:focusable="true"
-            android:focusableInTouchMode="true" />
+            android:padding="2dp" />
     </ScrollView>
 
 </LinearLayout>

@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -13,24 +14,28 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.work.ForegroundInfo;
 
 public class NotificationHelper {
+
     public static final String CHANNEL_ID = "scan_channel";
     private static final int NOTIFICATION_ID = 4242;
 
-    // Создаём канал уведомлений (обязательно для Android 8+)
     public static void createNotificationChannel(Context context) {
         NotificationManager manager = context.getSystemService(NotificationManager.class);
-        if (manager != null) {
+        if (manager == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel existing = manager.getNotificationChannel(CHANNEL_ID);
+            if (existing != null) return;
+
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Сканирование IP",
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("Уведомления о процессе сканирования");
+            channel.setDescription("Уведомления о процессе сканирования IP-адресов");
             manager.createNotificationChannel(channel);
         }
     }
 
-    // 🔥 Foreground-уведомление с прогрессом (живое, обновляемое)
     public static ForegroundInfo createForegroundInfo(Context context, String text, int done, int total) {
         createNotificationChannel(context);
 
@@ -38,7 +43,7 @@ public class NotificationHelper {
 
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle("Сканирование сети")
-                .setContentText(text + " (" + done + "/" + total + ")")
+                .setContentText(text + (total > 0 ? " (" + done + "/" + total + ")" : ""))
                 .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setProgress(100, progress, total == 0)
                 .setOngoing(true)
@@ -47,7 +52,6 @@ public class NotificationHelper {
                 .setSilent(true)
                 .build();
 
-        // ⚙️ Для Android 14 нужен тип FOREGROUND_SERVICE_TYPE_DATA_SYNC
         if (Build.VERSION.SDK_INT >= 34) {
             return new ForegroundInfo(
                     NOTIFICATION_ID,
@@ -59,54 +63,104 @@ public class NotificationHelper {
         }
     }
 
-    // 🔄 Обновление уведомления при каждом IP без мерцания
     public static void updateProgress(Context context, int done, int total, String ip) {
         createNotificationChannel(context);
 
         int progress = (total > 0) ? (done * 100 / total) : 0;
-
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle("Сканирование сети")
                 .setContentText("Сканирую: " + ip + " (" + done + "/" + total + ")")
                 .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setProgress(100, progress, total == 0)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOnlyAlertOnce(true)
                 .setSilent(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
 
-        NotificationManagerCompat manager = NotificationManagerCompat.from(context);
         try {
+            NotificationManagerCompat manager = NotificationManagerCompat.from(context);
             if (Build.VERSION.SDK_INT < 33 ||
                     ActivityCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
                             == PackageManager.PERMISSION_GRANTED) {
                 manager.notify(NOTIFICATION_ID, notification);
             }
-        } catch (SecurityException ignored) {
-        }
+        } catch (Exception ignored) {}
     }
 
-    // ✅ Финальное уведомление после завершения сканирования
     public static void showCompletionNotification(Context context) {
         createNotificationChannel(context);
 
         Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle("Сканирование завершено")
-                .setContentText("✅ Все IP проверены")
+                .setContentText("✅ Все IP успешно проверены")
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .build();
 
-        NotificationManagerCompat manager = NotificationManagerCompat.from(context);
         try {
+            NotificationManagerCompat manager = NotificationManagerCompat.from(context);
             if (Build.VERSION.SDK_INT < 33 ||
                     ActivityCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
                             == PackageManager.PERMISSION_GRANTED) {
                 manager.notify(NOTIFICATION_ID + 1, notification);
             }
-        } catch (SecurityException ignored) {
+        } catch (Exception ignored) {}
+    }
+
+    public static void showPreRunNotification(Context context) {
+        createNotificationChannel(context);
+
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("Напоминание о проверке")
+                .setContentText("Через 5 минут начнётся автоматическая проверка IP")
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build();
+
+        try {
+            NotificationManagerCompat manager = NotificationManagerCompat.from(context);
+            if (Build.VERSION.SDK_INT < 33 ||
+                    ActivityCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
+                            == PackageManager.PERMISSION_GRANTED) {
+                manager.notify(NOTIFICATION_ID + 2, notification);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void showErrorNotification(Context context, String reason) {
+        createNotificationChannel(context);
+
+        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("Ошибка сканирования")
+                .setContentText("❌ Скан не запущен: " + reason)
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .build();
+
+        try {
+            NotificationManagerCompat manager = NotificationManagerCompat.from(context);
+            if (Build.VERSION.SDK_INT < 33 ||
+                    ActivityCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
+                            == PackageManager.PERMISSION_GRANTED) {
+                manager.notify(NOTIFICATION_ID + 3, notification);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    public static void cancelForegroundNotification(Context context) {
+        try {
+            NotificationManager manager =
+                    (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager != null) {
+                manager.cancelAll();
+                Log.i("NotificationHelper", "🧹 Все уведомления удалены");
+            }
+        } catch (Exception e) {
+            Log.e("NotificationHelper", "Ошибка отмены уведомлений: " + e.getMessage());
         }
     }
 }

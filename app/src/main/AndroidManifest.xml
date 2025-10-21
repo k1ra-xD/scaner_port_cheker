@@ -4,14 +4,23 @@
     package="com.example.ip">
 
     <!-- ====== Разрешения ====== -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+
+
+    <!-- ✅ Для получения SSID (Android 10+) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <!-- 🔥 Добавлено для совместимости с Android 14 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- 🔥 Для Android 14+ (WorkManager foreground типы) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-    <!-- Можно оставить SPECIAL_USE, если WorkManager требует -->
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
         tools:ignore="ProtectedPermissions" />
@@ -38,11 +47,23 @@
             </intent-filter>
         </activity>
 
-        <!-- ForegroundService, используемый WorkManager -->
+        <!-- ✅ Приёмник, который обрабатывает сигналы от AlarmManager -->
+        <receiver
+            android:name=".ScanReceiver"
+            android:exported="true" />
+
+        <!-- ✅ WorkManager foreground service -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync|connectedDevice"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="dataSync|connectedDevice|specialUse" />
+
+        <!-- ✅ WorkManager background service (фикс конфликта) -->
+        <service
+            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false"
+            tools:replace="android:exported" />
 
     </application>
 </manifest>

@@ -5,14 +5,13 @@ import android.net.Uri;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.work.Data;
-import androidx.work.ForegroundInfo;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,10 +25,11 @@ public class ScanWorker extends Worker {
         super(context, params);
     }
 
-    private void appendLog(File logFile, String line) {
+    private synchronized void appendLog(File logFile, String line) {
         try (FileWriter fw = new FileWriter(logFile, true);
              BufferedWriter bw = new BufferedWriter(fw)) {
-            bw.write(line + "\n");
+            String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+            bw.write(time + " " + line + "\n");
         } catch (Exception e) {
             Log.e(TAG, "Ошибка записи в лог: " + e.getMessage());
         }
@@ -38,82 +38,73 @@ public class ScanWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        long startTime = System.currentTimeMillis();
+        File logFile = new File(getApplicationContext().getExternalFilesDir(null), "scan_log.txt");
+        ExecutorService executor = null;
 
         try {
-            // ✅ создаём foreground уведомление сразу, чтобы Android не убил задачу
-            setForegroundAsync(
-                    NotificationHelper.createForegroundInfo(
-                            getApplicationContext(),
-                            "Подготовка к сканированию...",
-                            0,
-                            0
-                    )
-            );
+            setForegroundAsync(NotificationHelper.createForegroundInfo(
+                    getApplicationContext(), "Подготовка к сканированию...", 0, 0));
 
-            Uri uri = Uri.parse(getInputData().getString(KEY_FILE_URI));
-            List<String> ips = FileHelper.loadIps(getApplicationContext(), uri);
-
-            if (ips == null || ips.isEmpty()) {
-                Log.w(TAG, "Список IP пуст!");
+            String fileUriStr = getInputData().getString(KEY_FILE_URI);
+            if (fileUriStr == null || fileUriStr.isEmpty()) {
+                appendLog(logFile, "❌ Не указан файл Excel");
                 return Result.failure();
             }
 
+            Uri uri = Uri.parse(fileUriStr);
+            boolean checkPing = getInputData().getBoolean("checkPing", true);
+            boolean checkHttp = getInputData().getBoolean("checkHttp", true);
+            boolean checkSsh = getInputData().getBoolean("checkSsh", true);
+            boolean checkModbus = getInputData().getBoolean("checkModbus", false);
             int startRow = getInputData().getInt("startRow", 1);
-            File logFile = new File(getApplicationContext().getExternalFilesDir(null), "scan_log.txt");
 
-            int total = (startRow <= ips.size()) ? (ips.size() - startRow + 1) : 0;
-            if (total <= 0) {
-                appendLog(logFile, "❌ Нет IP-адресов для проверки (startRow > размер файла)");
-                return Result.success();
+            // ✅ Берём IP + имя, если оно есть (ячейка слева)
+            Map<String, String> ipNameMap = FileHelper.loadIpsWithNames(getApplicationContext(), uri, startRow);
+            if (ipNameMap == null || ipNameMap.isEmpty()) {
+                appendLog(logFile, "❌ Список IP пуст (лист 1)");
+                return Result.failure();
             }
 
-            try (BufferedWriter clear = new BufferedWriter(new FileWriter(logFile, false))) {
-                clear.write("=== Начало проверки (" + total + " адресов, с " + startRow + " строки) ===\n");
-                if (startRow > 1) clear.write("▶ Пропущено " + (startRow - 1) + " строк\n");
-            }
+            // 📊 старые данные для diff (лист 0 = первый)
+            Map<String, Map<String, String>> previousResults =
+                    ExcelReader.readFile(getApplicationContext().getContentResolver(), uri, true, 0);
 
-            int THREAD_COUNT = 40;
-            ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+            int total = ipNameMap.size();
+            appendLog(logFile, "▶ Сканирование начато (" + total + " IP)");
+            int THREAD_COUNT = Math.max(8, Math.min(32, Runtime.getRuntime().availableProcessors() * 3));
+            executor = Executors.newFixedThreadPool(THREAD_COUNT);
 
             Map<String, Map<String, String>> allResults = new ConcurrentHashMap<>();
             AtomicInteger done = new AtomicInteger(0);
 
-            Map<String, String> meta = new HashMap<>();
-            meta.put("startRow", String.valueOf(startRow));
-            allResults.put("__meta__", meta);
+            for (Map.Entry<String, String> entry : ipNameMap.entrySet()) {
+                if (isStopped()) break;
 
-            // 🔥 повторно обновляем foreground уведомление перед основной загрузкой
-            setForegroundAsync(
-                    NotificationHelper.createForegroundInfo(
-                            getApplicationContext(),
-                            "Сканирование начато...",
-                            0,
-                            total
-                    )
-            );
-
-            for (int i = 0; i < ips.size(); i++) {
-                String ip = ips.get(i);
-                if ((i + 1) < startRow) continue;
+                String ip = entry.getKey();
+                String name = entry.getValue();
 
                 executor.submit(() -> {
+                    if (isStopped()) return;
                     try {
-                        Map<String, String> res = PortScanner.scanIpSync(ip);
+                        Map<String, String> res = new HashMap<>();
+                        res.put("NAME", name); // 👈 имя попадёт в ExcelDiffManager
+                        res.put("PING", checkPing ? PortScanner.scanPing(ip).get("PING") : "—");
+                        res.put("HTTP", checkHttp ? PortScanner.scanHttp(ip).get("HTTP") : "—");
+                        res.put("SSH", checkSsh ? PortScanner.scanSsh(ip).get("SSH") : "—");
+                        res.put("Modbus", checkModbus ? PortScanner.scanModbus(ip).get("Modbus") : "—");
+
                         allResults.put(ip, res);
-
                         int current = done.incrementAndGet();
-                        appendLog(logFile, "[" + current + "/" + total + "] " + ip +
-                                " -> PING=" + res.get("PING") +
-                                " HTTP=" + res.get("HTTP") +
-                                " SSH=" + res.get("SSH") +
-                                " Modbus=" + res.get("Modbus"));
 
-                        // 🔥 стабильно обновляем уведомление
-                        NotificationHelper.updateProgress(getApplicationContext(), current, total, "Сканирую " + ip);
-                        setProgressAsync(new Data.Builder().putBoolean("logUpdated", true).build());
+                        // лог без имени — чтобы не засорять
+                        appendLog(logFile, String.format(
+                                "[%d/%d] %s → PING=%s HTTP=%s SSH=%s Modbus=%s",
+                                current, total, ip,
+                                res.get("PING"), res.get("HTTP"), res.get("SSH"), res.get("Modbus")
+                        ));
+                        NotificationHelper.updateProgress(getApplicationContext(), current, total, ip);
                     } catch (Exception e) {
-                        Log.e(TAG, "Ошибка при проверке " + ip, e);
+                        appendLog(logFile, "⚠️ Ошибка при проверке " + ip + ": " + e.getMessage());
                     }
                 });
             }
@@ -121,52 +112,28 @@ public class ScanWorker extends Worker {
             executor.shutdown();
             executor.awaitTermination(30, TimeUnit.MINUTES);
 
-            try {
-                boolean ok = ExcelWriter.updateFile(
-                        getApplicationContext().getContentResolver(),
-                        uri,
-                        allResults
-                );
-                if (!ok) {
-                    Log.e(TAG, "Ошибка записи в Excel/CSV");
-                    appendLog(logFile, "⚠️ Ошибка записи в Excel/CSV");
-                } else {
-                    appendLog(logFile, "✅ Результаты записаны в Excel");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "ExcelWriter.updateFile упал: " + e.getMessage());
-                appendLog(logFile, "⚠️ Ошибка ExcelWriter: " + e.getMessage());
-            }
+            boolean ok = ExcelWriter.updateFile(getApplicationContext().getContentResolver(), uri, allResults);
+            appendLog(logFile, ok ? "🧾 Результаты записаны" : "⚠️ Ошибка записи Excel");
 
-            appendLog(logFile, "=== Проверка завершена ===");
+            appendLog(logFile, "📊 Добавляю лист изменений...");
+            ExcelDiffManager.writeDiffToSameFile(
+                    getApplicationContext().getContentResolver(),
+                    uri,
+                    previousResults,
+                    allResults
+            );
+            appendLog(logFile, "✅ Лист изменений добавлен");
 
-            long elapsed = System.currentTimeMillis() - startTime;
-            String elapsedStr;
-            if (elapsed > 3600000) {
-                elapsedStr = String.format("Время выполнения: %d ч %d мин %d сек",
-                        elapsed / 3600000,
-                        (elapsed % 3600000) / 60000,
-                        (elapsed % 60000) / 1000);
-            } else if (elapsed > 60000) {
-                elapsedStr = String.format("Время выполнения: %d мин %d сек",
-                        elapsed / 60000,
-                        (elapsed % 60000) / 1000);
-            } else {
-                elapsedStr = String.format("Время выполнения: %d сек", elapsed / 1000);
-            }
-            appendLog(logFile, elapsedStr);
-
-            // ✅ финальное уведомление
             NotificationHelper.showCompletionNotification(getApplicationContext());
+            appendLog(logFile, "🏁 Проверка завершена");
             return Result.success();
 
         } catch (Exception e) {
-            Log.e(TAG, "doWork exception", e);
+            Log.e(TAG, "Ошибка ScanWorker", e);
+            appendLog(logFile, "❌ Ошибка: " + e.getMessage());
             return Result.failure();
+        } finally {
+            if (executor != null) executor.shutdownNow();
         }
-    }
-
-    private ForegroundInfo createForegroundInfo(String text, int done, int total) {
-        return NotificationHelper.createForegroundInfo(getApplicationContext(), text, done, total);
     }
 }
